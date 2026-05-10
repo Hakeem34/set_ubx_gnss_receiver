@@ -1,6 +1,7 @@
 import serial
 import time
 import argparse
+from datetime import datetime, timezone
 
 UBX_HEADER = b"\xB5\x62"
 g_set_sequence = 0
@@ -76,6 +77,13 @@ def parse_ubx(ser, msg):
         set_nmea_rate(ser, g_set_sequence)
 
 
+def print_log(text):
+    ms = int(time.time() * 1000)
+    dt = datetime.fromtimestamp(ms / 1000, tz=timezone.utc)
+    formatted = dt.strftime("%Y-%m-%d %H:%M:%S.%f")[:-3]
+
+    print(f"{formatted} : {text}")
+
 
 def receieve_loop(ser):
     global g_set_sequence
@@ -83,7 +91,7 @@ def receieve_loop(ser):
     buffer = b""
     g_set_sequence = 0
     while True:
-        buffer += ser.read(64)
+        buffer += ser.read(32)
         while buffer:
             if buffer.startswith(b"$"):
                 end = buffer.find(b"\r\n")
@@ -92,7 +100,7 @@ def receieve_loop(ser):
 
                 line = buffer[:end]
                 buffer = buffer[end+2:]
-                print("NMEA:", line.decode(errors="ignore"))
+                print_log("NMEA:" + line.decode(errors="ignore"))
 
             elif buffer.startswith(b"\xB5\x62"):
                 length = int.from_bytes(buffer[4:6], "little")
